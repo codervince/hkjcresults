@@ -15,3 +15,5 @@ NEWSPIDER_MODULE = 'hkjc.spiders'
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
 #USER_AGENT = 'hkjc (+http://www.yourdomain.com)'
+
+DUPEFILTER_CLASS = 'hkjc.utils.CustomFilter'

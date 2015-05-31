@@ -80,6 +80,7 @@ class HorseSpider(scrapy.Spider):
             'racetrack': racetrack,
             'horsecodelist': horsecodelist,
             'racingincidentreport': racingincidentreport,
+            'results_url': response.url,
         }
         request.meta.update(meta_dict)
 
@@ -109,17 +110,81 @@ class HorseSpider(scrapy.Spider):
             horse_path = line_selector.xpath('td[3]/div/a/@href').extract()[0]
             horse_url = 'http://www.{domain}/english/racing/{path}&Option=1#htop'.format(
                 domain=self.domain, path=horse_path)
-            request = scrapy.Request(horse_url, callback=self.parse_horse)
+
+            marginsbehindleader = [s.strip('\t\n\r ') for s in line_selector.xpath(
+                'td//table//td/text()').extract()]
+            marginsbehindleader.extend([None]*(6 - len(marginsbehindleader)))
+
+            request = scrapy.Request(response.meta['results_url'],
+                callback=self.parse_results)
             meta_dict = response.meta
             meta_dict.update({
                 'horsenumber': horsenumber,
                 'horsename': horsename,
                 'horsecode': horsecode,
                 'timelist': timelist,
+                'horse_url': horse_url,
+                'marginsbehindleader': marginsbehindleader,
             })
             request.meta.update(meta_dict)
 
             yield request
+
+    def parse_results(self, response):
+
+        tr = response.xpath('//tr[td[3]/a[text() = "{}"]]'.format(
+            response.meta['horsename']))
+
+        jockeyname = tr.xpath('td[4]/a/text()').extract()[0]
+
+        jockeycode_ = tr.xpath('td[4]/a/@href').extract()[0]
+        jockeycode = re.match(r'^http://www.hkjc.com/english/racing/'
+            'jockeyprofile.asp?.*jockeycode=(?P<str>[^&]*)(&.*$|$)', jockeycode_
+            ).groupdict()['str']
+
+        trainername = tr.xpath('td[5]/a/text()').extract()[0]
+
+        trainercode_ = tr.xpath('td[5]/a/@href').extract()[0]
+        trainercode = re.match(r'http://www.hkjc.com/english/racing/'
+            'trainerprofile.asp?.*trainercode=(?P<str>[^&]*)(&.*$|$)', trainercode_
+            ).groupdict()['str']
+
+        actualwt = tr.xpath('td[6]/text()').extract()[0]
+
+        declarhorsewt = tr.xpath('td[7]/text()').extract()[0]
+
+        jockey2horsewt = float(actualwt)/float(declarhorsewt)
+
+        draw = tr.xpath('td[8]/text()').extract()[0]
+
+        lbw = tr.xpath('td[9]/text()').extract()[0]
+
+        runningposition = tr.xpath('td[10]//td/text()').extract()
+
+        finishtime = tr.xpath('td[11]/text()').extract()[0]
+
+        winoddsrank = tr.xpath('td[12]/text()').extract()[0]
+
+        request = scrapy.Request(response.meta['horse_url'],
+            callback=self.parse_horse)
+        meta_dict = response.meta
+        meta_dict.update(
+            jockeyname=jockeyname,
+            jockeycode=jockeycode,
+            trainername=trainername,
+            trainercode=trainercode,
+            actualwt=actualwt,
+            declarhorsewt=declarhorsewt,
+            jockey2horsewt=jockey2horsewt,
+            draw=draw,
+            lbw=lbw,
+            runningposition=runningposition,
+            finishtime=finishtime,
+            winoddsrank=winoddsrank,
+        )
+        request.meta.update(meta_dict)
+
+        return request
 
     def parse_horse(self, response):
 
@@ -136,6 +201,15 @@ class HorseSpider(scrapy.Spider):
             racedate.append(race_raw_sel.xpath('td[3]/text()').extract()[0])
             place.append(race_raw_sel.xpath('td[2]//font/text()').extract()[0])
 
+        ownername = response.xpath('//td[font[text()="Owner"]]/'
+            'following-sibling::td/font/a/text()').extract()[0].strip()
+
+        dam = response.xpath('//td[font[text()="Dam"]]/'
+            'following-sibling::td/font/text()').extract()[0][1:].strip('\r\n ')
+
+        damsire = response.xpath('//td[font[text()="Dam\'s Sire"]]/'
+            'following-sibling::td/font/text()').extract()[0][1:].strip('\r\n ')
+
         yield items.HkjcHorseItem(
             racenumber=response.meta['racenumber'],
             raceindex=response.meta['raceindex'],
@@ -150,9 +224,25 @@ class HorseSpider(scrapy.Spider):
             horsename=response.meta['horsename'],
             horsecode=response.meta['horsecode'],
             timelist=response.meta['timelist'],
+            jockeyname=response.meta['jockeyname'],
+            jockeycode=response.meta['jockeycode'],
+            trainername=response.meta['trainername'],
+            trainercode=response.meta['trainercode'],
+            actualwt=response.meta['actualwt'],
+            declarhorsewt=response.meta['declarhorsewt'],
+            jockey2horsewt=response.meta['jockey2horsewt'],
+            draw=response.meta['draw'],
+            lbw=response.meta['lbw'],
+            runningposition=response.meta['runningposition'],
+            finishtime=response.meta['finishtime'],
+            winoddsrank=response.meta['winoddsrank'],
+            marginsbehindleader=response.meta['marginsbehindleader'],
             sirename=sirename,
             racedate=racedate,
             place=place,
+            ownername=ownername,
+            dam=dam,
+            damsire=damsire,
         )
 
     def parse_horse2(self, response):
@@ -169,6 +259,15 @@ class HorseSpider(scrapy.Spider):
             place.append(race_raw_sel.xpath('td[2]/text()').extract()[0])
             final_sec_time.append(race_raw_sel.xpath('td[17]/text()').extract()[0])
 
+        ownername = response.xpath('//td[font[text()="Owner"]]/'
+            'following-sibling::td/font/a/text()').extract()[0].strip()
+
+        dam = response.xpath('//td[font[text()="Dam"]]/'
+            'following-sibling::td/font/text()').extract()[0][1:].strip('\r\n ')
+
+        damsire = response.xpath('//td[font[text()="Dam\'s Sire"]]/'
+            'following-sibling::td/font/text()').extract()[0][1:].strip('\r\n ')
+
         yield items.HkjcHorseItem(
             racenumber=response.meta['racenumber'],
             raceindex=response.meta['raceindex'],
@@ -183,8 +282,24 @@ class HorseSpider(scrapy.Spider):
             horsename=response.meta['horsename'],
             horsecode=response.meta['horsecode'],
             timelist=response.meta['timelist'],
+            jockeyname=response.meta['jockeyname'],
+            jockeycode=response.meta['jockeycode'],
+            trainername=response.meta['trainername'],
+            trainercode=response.meta['trainercode'],
+            actualwt=response.meta['actualwt'],
+            declarhorsewt=response.meta['declarhorsewt'],
+            jockey2horsewt=response.meta['jockey2horsewt'],
+            draw=response.meta['draw'],
+            lbw=response.meta['lbw'],
+            runningposition=response.meta['runningposition'],
+            finishtime=response.meta['finishtime'],
+            winoddsrank=response.meta['winoddsrank'],
+            marginsbehindleader=response.meta['marginsbehindleader'],
             sirename=sirename,
             racedate=racedate,
             place=place,
             final_sec_time=final_sec_time,
+            ownername=ownername,
+            dam=dam,
+            damsire=damsire,
         )
