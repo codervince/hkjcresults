@@ -32,6 +32,7 @@ class HkjcHorseItem(scrapy.Item):
     lbw = scrapy.Field()
     runningposition = scrapy.Field()
     finishtime = scrapy.Field()
+    winodds = scrapy.Field()
     winoddsrank = scrapy.Field()
     marginsbehindleader = scrapy.Field()
     ownername = scrapy.Field()

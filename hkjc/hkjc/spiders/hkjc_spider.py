@@ -163,7 +163,25 @@ class HorseSpider(scrapy.Spider):
 
         finishtime = tr.xpath('td[11]/text()').extract()[0]
 
-        winoddsrank = tr.xpath('td[12]/text()').extract()[0]
+        winodds = tr.xpath('td[12]/text()').extract()[0]
+
+        try:
+            winodds_float = float(winodds)
+        except ValueError:
+            winoddsrank = None
+        else:
+            winoddss = response.xpath('//table[@class="tableBorder trBgBlue '
+                'tdAlignC number12 draggable"]//tr[@class="trBgGrey" or @class='
+                '"trBgWhite"]/td[12]/text()').extract()
+            winoddsranks = []
+            for hc, wo in zip(response.meta['horsecodelist'], winoddss):
+                try:
+                    winoddsranks.append((hc, float(wo)))
+                except ValueError:
+                    pass
+            winoddsranks.sort(key=lambda x: x[1])
+            winoddsrank = winoddsranks.index((response.meta['horsecode'],
+                winodds_float)) + 1
 
         request = scrapy.Request(response.meta['horse_url'],
             callback=self.parse_horse)
@@ -180,6 +198,7 @@ class HorseSpider(scrapy.Spider):
             lbw=lbw,
             runningposition=runningposition,
             finishtime=finishtime,
+            winodds = winodds,
             winoddsrank=winoddsrank,
         )
         request.meta.update(meta_dict)
