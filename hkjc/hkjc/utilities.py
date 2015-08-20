@@ -1,7 +1,7 @@
 #utiltiies
 from fractions import Fraction
 from datetime import date, time, datetime, timedelta
-from dateutil import tz
+from dateutil.relativedelta import relativedelta
 import re
 import operator
 import math
@@ -35,9 +35,50 @@ import pprint
 
 ### RAILTYPE INFO
 
+
+def getseasonstart(date_obj):
+    season_start = date_obj - relativedelta(years=1) 
+    return season_start
+
+def try_dateobj(date_obj):
+    try:
+        date_obj.year
+    except TypeError:
+        return None
+
+
+def try_datestr(date_text):
+    try:
+       return date_text.strftime("%m/%d/%Y") 
+    except ValueError:
+        return None
+
+def dateobjtostring(date_obj):
+    try:
+        return date_obj.strftime(date_obj, '%d/%m/%y')
+    except ValueError:
+        return None
+
+def datestringtoobj(date_text):
+    ##is a string or a date pbject?
+    try:
+        return datetime.strptime(date_text, "%m/%d/%Y")
+    except ValueError:
+        return None
+
+
 def cleanstring(s):
     pattern = re.compile(r'\s+')
     return re.sub(pattern, u' ',s).sub(u'-', u'')
+
+
+def getsp(sp):
+    try: 
+        if sp != u'---':
+            return sp
+    except TypeError:
+        # return try_float(sp)
+        return None
 
 ## for comparing with historical data
 ## ST / "AWT" / "-"
@@ -243,19 +284,44 @@ def from_eventinfo(eventinfo):
 def getsplits(distance, timelist):
     ct = [float(i) for i in timelist if i is not None]
     splits = {}
-    d1 = None
+    if distance is None:
+        return None 
+    if int(distance) in [1200,1600,2000]:
+        #1600, 1200, 2000,2400 1sec = 400
+        splits['0-400m'] = round(float(400)/float(ct[0]),3)
+        splits['0-800m'] = round(float(800)/float(ct[0]+ct[1]),3)
+        splits['last400m'] = round(float(400)/float(ct[-1]),3)
+        splits['last800m'] = round(float(400)/float(ct[-2]+ct[-1]),3)
+    if int(distance) in [1000,1400,1800,2200]:
+        splits['0-200m'] = round(float(200)/float(ct[0]),3)
+        splits['0-600m'] = round(float(600)/float(ct[0]+ct[1]),3)
+        splits['last400m'] = round(float(400)/float(ct[-1]),3)
+        splits['last800m'] = round(float(400)/float(ct[-2]+ct[-1]),3)
+    if int(distance) in [1100,1500,1900]:
+        splits['0-300m'] = round(float(300)/float(ct[0]),3)
+        splits['0-700m'] = round(float(700)/float(ct[0]+ct[1]),3)
+        splits['last400m'] = round(float(400)/float(ct[-1]),3)
+        splits['last800m'] = round(float(400)/float(ct[-2]+ct[-1]),3)
+    if int(distance) in [1650]:
+        splits['0-350m'] = round(float(350)/float(ct[0]),3)
+        splits['0-750m'] = round(float(750)/float(ct[0]+ct[1]),3)
+        splits['last400m'] = round(float(400)/float(ct[-1]),3)
+        splits['last800m'] = round(float(400)/float(ct[-2]+ct[-1]),3)
     # splits['zero2finish'] = None
     splits['zero2finish'] = round(float(distance)/sum(map(float,ct)),3) #d/t
-    if distance in [1000,1400,1800,2200]:
-        d1 = 200
-    if distance in [1200,1600,2000,2400]:
-        d1 = 400
-    if distance in [1100,1500,1900]:
-        d1 = 300
-    if distance in [1650]:
-        d1 = 350
-    if d1 is not None:
-        splits['firstsec'] = round(d1/ct[0],3) 
+    # if distance == 1600:
+    #     d1 = 200
+    #     splits['firstsec'] = round(float(d1)/float(ct[0]),3)
+    # if distance in [1000,1400,1800,2200]:
+    #     d1 = 200
+    # if distance ==1600:
+    #     d1 = 400
+    # if distance in [1100,1500,1900]:
+    #     d1 = 300
+    # if distance in [1650]:
+    #     d1 = 350
+    # if d1 is not None:
+    #     splits['firstsec'] = round(float(d1)/float(ct[0]),3) 
     return splits
 
 #ft2time(response.meta['finishtime'])
@@ -265,6 +331,12 @@ def getdraw(draw):
         return None
     else:
         return try_int(draw)
+
+def valueordash(value):
+    if value == u'--':
+        return None
+    else:
+        return try_int(value)
 
 def ft2time(finishtime):
     #format u'1.40.18'
@@ -276,7 +348,7 @@ def get_hkjc_ftime(ftime, myformat=None):
     expected format:1:40.7 m:ss.n
     if format =='s' return no of seconds else datetiem obj
     '''
-    if ftime is None:
+    if ftime is None or ftime == u'--':
         return None
     else:    
         ftr = [60,1,0.1]
@@ -359,10 +431,12 @@ def processplace(place):
     place = unicode.strip(place)
     if place is None:
         return None
+    if place == 'Pla.':
+        return None
     if "DH" in place:
         return int(place.replace("DH", ''))
     else:
-        if place in [u'WV', u'WV-A', u'WX-A', u'UV', u'DISQ', u'FE', u'DNF', u'PU', u'TNP', u'UR']:
+        if place in [u'WV', u'WV-A', u'WX-A', u'UV', u'DISQ', u'FE', u'DNF', u'PU', u'TNP', u'UR', u'WX']:
             return 99
         else:
             return int(place)
@@ -403,7 +477,7 @@ def horselengthprocessor(value):
     if type(value) == type([]):
             value = u''.join(value)
     value = unicode.strip(value)
-    if '---' in value or '--' in value:
+    if '---' in value or '--' in value or value == u'':
         return None
     if value == '-':
         #winner
@@ -417,7 +491,10 @@ def horselengthprocessor(value):
     if value == u'HD':
         return 0.2
     if value == u'SN':
-        return 0.25  
+        return 0.25
+    ## tailed off
+    if value == u'TO':
+        return 10.0 
     #nose?           
     if value == 'NOSE':
         return 0.05
@@ -440,7 +517,7 @@ def try_int(value):
 def getHorseReport(ir, h):
     lir = ir.split('.')
     rtn = [e.replace(".\\n", "...") for e in lir if h in e]
-    return u''.join([i.replace('\r', '').replace('\n', '-').replace(u'  ', ' ') for i in rtn])
+    return u''.join([i.replace('\r', '').replace('\n', '-').replace(u'  ', ' ').replace(u'-',u'') for i in rtn])
 
 #done in default output processor?
 def noentryprocessor(value):
