@@ -18,6 +18,7 @@ NEWSPIDER_MODULE = 'hkjc.spiders'
 #USER_AGENT = 'hkjc (+http://www.yourdomain.com)'
 USER_AGENT = "Googlebot/2.1 ( http://www.google.com/bot.html)"
 
+AUTOTHROTTLE_ENABLED = True
 
 # DATABASE = {'drivername': 'postgres',
 #             'host': 'localhost',
@@ -29,4 +30,4 @@ USER_AGENT = "Googlebot/2.1 ( http://www.google.com/bot.html)"
 
 DUPEFILTER_CLASS = 'hkjc.utils.CustomFilter'
 
-LOG_FILE = "scrapy_%s_%s.log" % ('hkjc', datetime.now().date())
+LOG_FILE = "scrapy_%s_%s.log" % ('hkjcsep', datetime.now().date())

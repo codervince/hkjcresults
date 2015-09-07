@@ -36,35 +36,30 @@ import pprint
 ### RAILTYPE INFO
 
 
+### DIFF DATE FORMATS HK
+def getdateobject(date_str):
+    #two variants on retired its %Y, on old its %y which is '15, on newform its '15 too
+    #what kind of format?
+    if u'/' not in date_str:
+        return datetime.strptime(date_str, '%Y%m%d')
+    if len(date_str) ==10:
+        return datetime.strptime(date_str, '%d/%m/%Y')
+    elif len(date_str) == 8:
+        return datetime.strptime(date_str, '%d/%m/%y')
+    else:
+        raise ValueError
+
+
 def getseasonstart(date_obj):
-    season_start = date_obj - relativedelta(years=1) 
+    season_start = date_obj - relativedelta(years=1,month=9, day=1) 
     return season_start
 
-def try_dateobj(date_obj):
-    try:
-        date_obj.year
-    except TypeError:
-        return None
+# def try_dateobj(date_obj):
+#     try:
+#         date_obj.year
+#     except TypeError:
+#         return None
 
-
-def try_datestr(date_text):
-    try:
-       return date_text.strftime("%m/%d/%Y") 
-    except ValueError:
-        return None
-
-def dateobjtostring(date_obj):
-    try:
-        return date_obj.strftime(date_obj, '%d/%m/%y')
-    except ValueError:
-        return None
-
-def datestringtoobj(date_text):
-    ##is a string or a date pbject?
-    try:
-        return datetime.strptime(date_text, "%m/%d/%Y")
-    except ValueError:
-        return None
 
 
 def cleanstring(s):
@@ -76,6 +71,14 @@ def getsp(sp):
     try: 
         if sp != u'---':
             return sp
+    except TypeError:
+        # return try_float(sp)
+        return None
+
+def getactualwt(awt):
+    try: 
+        if awt != u'---':
+            return try_int(awt)
     except TypeError:
         # return try_float(sp)
         return None
@@ -325,6 +328,17 @@ def getsplits(distance, timelist):
     return splits
 
 #ft2time(response.meta['finishtime'])
+def getodds(odds):
+    if odds == u'---':
+        return None
+    else:
+        return try_float(odds)
+
+def getlbw(lbw):
+    if lbw == u'-':
+        return None
+    else:
+        return horselengthprocessor(lbw)
 
 def getdraw(draw):
     if draw == u'--':
@@ -342,13 +356,33 @@ def ft2time(finishtime):
     #format u'1.40.18'
     pass
 
-def get_hkjc_ftime(ftime, myformat=None):
+'''
+expecting format ss.mm
+'''
+def get_sec_in_secs(s):
+    if s == u'--' or s is None:
+        return None
+    l = s.split('.') #array min, secs, milli - we want seconds
+    # l[0]*60 + l[1] + l[2]/60.0
+    return float(l[0]) +(float(l[1])*0.01)
+
+def get_sec(s):
+    if s == u'--':
+        return None
+    l = s.split('.') #array min, secs, milli - we want seconds
+    # l[0]*60 + l[1] + l[2]/60.0
+    return float(l[0])*60 + float(l[1]) + (float(l[2])*0.01)
+
+def removeunicode(value):
+    return value.encode('ascii', 'ignore')
+
+
+def get_hkjc_ftime(ftime):
     '''
     strftime('%s')
     expected format:1:40.7 m:ss.n
-    if format =='s' return no of seconds else datetiem obj
     '''
-    if ftime is None or ftime == u'--':
+    if ftime is None or ftime == u'--' or ftime == u'':
         return None
     else:    
         ftr = [60,1,0.1]
@@ -389,8 +423,12 @@ def isFavorite(oddscolor):
 
 
 ##########
-
-def processrp(rpstr):
+def get_rp_array(rpstr):
+    # \xa0
+    rpstr = unicode.strip(rpstr)
+    rpstr= rpstr.replace(u'\xa0\xa0', u'-')
+    return [try_int(i) for i in rpstr]
+def get_rp(rpstr):
     # \xa0
     rpstr = unicode.strip(rpstr)
     return rpstr.replace(u'\xa0\xa0', u'-')
@@ -416,41 +454,25 @@ def timeprocessor(value):
             pass
     return None
 
-def timeprocessor(value):
-    #tries for each possible format
-    for format in ("%S.%f", "%M.%S.%f", "%S"):
-        try:
-            return datetime.strptime(value, format).time()
-        except:
-            pass
-    return None
-
 #dead heats FIX!
 def processplace(place):
     # r_dh = r'.*[0-9].*DH$'
-    place = unicode.strip(place)
-    if place is None:
-        return None
-    if place == 'Pla.':
-        return None
-    if "DH" in place:
-        return int(place.replace("DH", ''))
+    if isinstance(place, int):
+        return place
     else:
-        if place in [u'WV', u'WV-A', u'WX-A', u'UV', u'DISQ', u'FE', u'DNF', u'PU', u'TNP', u'UR', u'WX']:
-            return 99
+        place = unicode.strip(place)
+        if place is None:
+            return None
+        if place == 'Pla.':
+            return None
+        if "DH" in place:
+            return int(place.replace("DH", ''))
         else:
-            return int(place)
-        # return { "WV": 99,
-        # "WV-A": 99,
-        # "WX": 99,
-        # "WX-A": 99,
-        # "UV": 99,
-        # "DISQ": 99,
-        # "FE": 99,
-        # "DNF":99,
-        # "PU": 99,
-        # "TNP":99,
-        # "UR": 99}.get(str(place), int(place))
+            if place in [u'WV', u'WV-A', u'WX-A', u'UV', u'DISQ', u'FE', u'DNF', u'PU', u'TNP', u'UR', u'WX']:
+                return 99
+            else:
+                return int(place)
+
 
 def didnotrun(value):
     if "---" in value:
@@ -471,6 +493,7 @@ def didnotrun(value):
 
 
 def horselengthprocessor(value):
+    from fractions import Fraction
     #covers '' and '-'
     if value is None:
         return None
@@ -516,8 +539,14 @@ def try_int(value):
 
 def getHorseReport(ir, h):
     lir = ir.split('.')
-    rtn = [e.replace(".\\n", "...") for e in lir if h in e]
-    return u''.join([i.replace('\r', '').replace('\n', '-').replace(u'  ', ' ').replace(u'-',u'') for i in rtn])
+    # HELEN\u2019S CHOICE
+    if "'" in h:
+        _h = h.split("'")
+        newh = _h[0]+u"\u2019"+_h[1]
+        rtn = [e.replace(".\\n", "...") for e in lir if h in e or newh in e]
+    else:
+        rtn = [e.replace(".\\n", "...") for e in lir if h in e]
+    return u''.join([i.replace('\r', '').replace('\n', '-').replace(u'  ', ' ').replace(u'-',u'').replace(u'\u2019', u'`') for i in rtn])
 
 #done in default output processor?
 def noentryprocessor(value):
@@ -527,6 +556,7 @@ def noentryprocessor(value):
 '''
 renvove u'\r\n\t4      \r\n\t
 remove \r\n\t\t\t\t\t
+what about \u2019S ? '
 '''
 def cleanstring(value):
     return unicode.strip(value)

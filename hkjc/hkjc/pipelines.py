@@ -6,6 +6,12 @@
 # See: http://doc.scrapy.org/en/latest/topics/item-pipeline.html
 
 
+#receive an item perform an action over it, cleans, duplicates, validation, database
+#returns an item or throws DropItem
 class HkjcPipeline(object):
+
+	##constants
+	
+
     def process_item(self, item, spider):
         return item
