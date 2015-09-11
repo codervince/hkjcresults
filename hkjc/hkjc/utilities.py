@@ -1,7 +1,7 @@
 #utiltiies
 from fractions import Fraction
 from datetime import date, time, datetime, timedelta
-from dateutil.relativedelta import relativedelta
+# from dateutil.relativedelta import relativedelta
 import re
 import operator
 import math
@@ -360,7 +360,7 @@ def ft2time(finishtime):
 expecting format ss.mm
 '''
 def get_sec_in_secs(s):
-    if s == u'--' or s is None:
+    if s == u'--' or s == u'' or s is None:
         return None
     l = s.split('.') #array min, secs, milli - we want seconds
     # l[0]*60 + l[1] + l[2]/60.0
@@ -382,7 +382,7 @@ def get_hkjc_ftime(ftime):
     strftime('%s')
     expected format:1:40.7 m:ss.n
     '''
-    if ftime is None or ftime == u'--' or ftime == u'':
+    if ftime is None or ftime == u'--' or ftime == u'' or ftime == u'---':
         return None
     else:    
         ftr = [60,1,0.1]

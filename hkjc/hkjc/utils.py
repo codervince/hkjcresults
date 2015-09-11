@@ -1,6 +1,6 @@
 import re
 
-from scrapy.dupefilter import RFPDupeFilter
+from scrapy.dupefilters import RFPDupeFilter
 
 
 class CustomFilter(RFPDupeFilter):
